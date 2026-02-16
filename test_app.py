@@ -30,11 +30,18 @@ class TestGreetingsData(unittest.TestCase):
         for lang in required_languages:
             self.assertIn(lang, app_builtin.GREETINGS)
 
-    def test_greeting_values_are_strings(self):
-        """All greeting values should be non-empty strings"""
-        for lang, greeting in app_builtin.GREETINGS.items():
-            self.assertIsInstance(greeting, str)
-            self.assertTrue(len(greeting) > 0)
+    def test_greeting_values_have_required_fields(self):
+        """All greeting values should have greeting, colors, and font fields"""
+        for lang, data in app_builtin.GREETINGS.items():
+            self.assertIsInstance(data, dict)
+            self.assertIn('greeting', data)
+            self.assertIn('colors', data)
+            self.assertIn('font', data)
+            self.assertIsInstance(data['greeting'], str)
+            self.assertTrue(len(data['greeting']) > 0)
+            self.assertIsInstance(data['colors'], list)
+            self.assertEqual(len(data['colors']), 3)
+            self.assertIsInstance(data['font'], str)
 
     def test_language_keys_are_lowercase(self):
         """All language keys should be lowercase"""
@@ -100,7 +107,7 @@ class TestLanguageSelection(unittest.TestCase):
         history = ['english', 'spanish', 'french']
 
         available_languages = [
-            (lang, greet) for lang, greet in app_builtin.GREETINGS.items()
+            (lang, data) for lang, data in app_builtin.GREETINGS.items()
             if lang not in history
         ]
 
@@ -118,7 +125,7 @@ class TestLanguageSelection(unittest.TestCase):
             history = app_builtin.SESSIONS[session_id]
 
             available_languages = [
-                (lang, greet) for lang, greet in app_builtin.GREETINGS.items()
+                (lang, data) for lang, data in app_builtin.GREETINGS.items()
                 if lang not in history
             ]
 
@@ -145,7 +152,7 @@ class TestLanguageSelection(unittest.TestCase):
 
         # All languages are in history
         available_languages = [
-            (lang, greet) for lang, greet in app_builtin.GREETINGS.items()
+            (lang, data) for lang, data in app_builtin.GREETINGS.items()
             if lang not in app_builtin.SESSIONS[session_id]
         ]
 
@@ -255,7 +262,7 @@ class TestRequestHandler(unittest.TestCase):
         history = app_builtin.SESSIONS[session_id]
 
         available_languages = [
-            (lang, greet) for lang, greet in app_builtin.GREETINGS.items()
+            (lang, data) for lang, data in app_builtin.GREETINGS.items()
             if lang not in history
         ]
 
@@ -263,7 +270,7 @@ class TestRequestHandler(unittest.TestCase):
         self.assertEqual(len(available_languages), len(app_builtin.GREETINGS))
 
         # Choose a language and update history
-        language, greeting = available_languages[0]
+        language, lang_data = available_languages[0]
         history.append(language)
 
         # Verify history was updated
@@ -278,6 +285,10 @@ class TestHTMLTemplate(unittest.TestCase):
         """HTML template should contain greeting and language placeholders"""
         self.assertIn('{greeting}', app_builtin.HTML_TEMPLATE)
         self.assertIn('{language}', app_builtin.HTML_TEMPLATE)
+        self.assertIn('{color1}', app_builtin.HTML_TEMPLATE)
+        self.assertIn('{color2}', app_builtin.HTML_TEMPLATE)
+        self.assertIn('{color3}', app_builtin.HTML_TEMPLATE)
+        self.assertIn('{font}', app_builtin.HTML_TEMPLATE)
 
     def test_html_template_is_valid_html(self):
         """HTML template should have valid HTML structure"""
@@ -301,13 +312,25 @@ class TestHTMLTemplate(unittest.TestCase):
         """HTML template should render correctly with values"""
         html = app_builtin.HTML_TEMPLATE.format(
             greeting='Hello',
-            language='English'
+            language='English',
+            color1='#012169',
+            color2='#C8102E',
+            color3='#FFFFFF',
+            font='Georgia, serif'
         )
 
         self.assertIn('Hello', html)
         self.assertIn('English', html)
+        self.assertIn('#012169', html)
+        self.assertIn('#C8102E', html)
+        self.assertIn('#FFFFFF', html)
+        self.assertIn('Georgia, serif', html)
         self.assertNotIn('{greeting}', html)
         self.assertNotIn('{language}', html)
+        self.assertNotIn('{color1}', html)
+        self.assertNotIn('{color2}', html)
+        self.assertNotIn('{color3}', html)
+        self.assertNotIn('{font}', html)
 
 
 class TestIntegration(unittest.TestCase):
@@ -330,7 +353,7 @@ class TestIntegration(unittest.TestCase):
 
             # Choose random language, avoiding recent ones
             available_languages = [
-                (lang, greet) for lang, greet in app_builtin.GREETINGS.items()
+                (lang, data) for lang, data in app_builtin.GREETINGS.items()
                 if lang not in history
             ]
 
@@ -339,7 +362,7 @@ class TestIntegration(unittest.TestCase):
                 app_builtin.SESSIONS[test_session_id] = []
                 available_languages = list(app_builtin.GREETINGS.items())
 
-            language, greeting = available_languages[0]  # Use first for deterministic testing
+            language, lang_data = available_languages[0]  # Use first for deterministic testing
 
             # Update session history
             history.append(language)
@@ -350,13 +373,17 @@ class TestIntegration(unittest.TestCase):
 
             # Generate HTML (testing template rendering)
             html = app_builtin.HTML_TEMPLATE.format(
-                greeting=greeting,
-                language=language.capitalize()
+                greeting=lang_data['greeting'],
+                language=language.capitalize(),
+                color1=lang_data['colors'][0],
+                color2=lang_data['colors'][1],
+                color3=lang_data['colors'][2],
+                font=lang_data['font']
             )
 
             # Verify valid HTML was returned
             self.assertIn('<!DOCTYPE html>', html)
-            self.assertIn(greeting, html)
+            self.assertIn(lang_data['greeting'], html)
             self.assertIn(language.capitalize(), html)
 
         # Verify we showed some languages

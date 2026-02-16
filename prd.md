@@ -79,7 +79,7 @@ The Ralph loop picks the first task with "passes": false
       "Ensure mobile responsiveness",
       "Add loading states and error handling"
     ],
-    "passes": false
+    "passes": true
   }
 ]
 ```
